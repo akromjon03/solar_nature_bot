@@ -18,6 +18,7 @@ public class QuestionaireBotConfig {
     public void initBot() {
         try {
             TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
+            questionaireBot.db().clear();
             botsApi.registerBot(questionaireBot);
         } catch (TelegramApiException e) {
             throw new RuntimeException(e);

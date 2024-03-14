@@ -5,6 +5,6 @@ public enum UserState {
     NONE,
     NOT_STARTED,
     CHOOSE_LANGUAGE,
-    NEXT
+    PHONE, NEXT
 
 }

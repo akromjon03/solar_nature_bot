@@ -2,11 +2,14 @@ spring:
   application:
     name: solar-nature-bot
 
+  jpa:
+    hibernate:
+      ddl-auto: update
+
   datasource:
     url: jdbc:postgresql://localhost:5432/solar_nature
     username: postgres
     password: 1
-
   messages:
     basename: i18n/messages
 
