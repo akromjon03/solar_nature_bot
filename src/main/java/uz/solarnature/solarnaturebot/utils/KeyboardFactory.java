@@ -39,10 +39,28 @@ public class KeyboardFactory {
     public static ReplyKeyboard getPhoneKeyboard() {
         var button = new KeyboardButton(MessageUtil.getMessage("share.phone"));
         button.setRequestContact(true);
+
+
         var row = new KeyboardRow();
         row.add(button);
         return ReplyKeyboardMarkup.builder()
                 .keyboardRow(row)
+                .resizeKeyboard(true)
+                .build();
+    }
+
+    public static ReplyKeyboard getMenuKeyboard() {
+        var menu1 = button("Vetrennoy elektrostansiyasi uchun anketa", "menu1" );
+        var menu2 = button("To'liq xizmat ko'rsatish PV zavodi uchun faktlar varaqasi", "menu2" );
+        var menu3 = button("Fotovoltaik stantsiyani tanlash uchun so'rovnoma", "menu3" );
+
+        var keyboard = List.of(List.of(menu1),
+                List.of(menu2),
+                List.of(menu3));
+
+
+        return InlineKeyboardMarkup.builder()
+                .keyboard(keyboard)
                 .build();
     }
 }
