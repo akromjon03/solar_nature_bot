@@ -21,8 +21,8 @@ public enum UserLanguage {
     public static UserLanguage fromCode(String code) {
         return switch (code) {
             case "en" -> ENGLISH;
-            case "ru" -> RUSSIAN;
-            default -> UZBEK;
+            case "uz" -> UZBEK;
+            default -> RUSSIAN;
         };
     }
 

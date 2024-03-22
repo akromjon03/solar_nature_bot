@@ -3,13 +3,17 @@ package uz.solarnature.solarnaturebot.domain.enumeration;
 public enum UserState {
 
     NONE,
+    MENU,
     NOT_STARTED,
     CHOOSE_LANGUAGE,
     PHONE,
-    MENU,
     NAME,
-    MAIL,
+    EMAIL,
     ADDRESS,
-    COMPANY_NAME, TIN, CONTACT_PERSON, COMPANY_PHONE_NUMBER, COMPANY_MAIL, COMPANY_ADDRESS, NEXT
+    COMPANY_NAME,
+    COMPANY_TIN,
+    DOCUMENT_TYPE,
+    ACCOUNT_TYPE,
+    OTHERS,
 
 }

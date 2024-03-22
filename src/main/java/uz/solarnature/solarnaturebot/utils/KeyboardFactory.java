@@ -7,6 +7,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMar
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
+import uz.solarnature.solarnaturebot.domain.enumeration.DocumentType;
 import uz.solarnature.solarnaturebot.domain.enumeration.UserLanguage;
 
 import java.util.List;
@@ -46,21 +47,49 @@ public class KeyboardFactory {
         return ReplyKeyboardMarkup.builder()
                 .keyboardRow(row)
                 .resizeKeyboard(true)
+                .oneTimeKeyboard(true)
                 .build();
     }
 
     public static ReplyKeyboard getMenuKeyboard() {
-        var menu1 = button("Vetrennoy elektrostansiyasi uchun anketa", "menu1" );
-        var menu2 = button("To'liq xizmat ko'rsatish PV zavodi uchun faktlar varaqasi", "menu2" );
-        var menu3 = button("Fotovoltaik stantsiyani tanlash uchun so'rovnoma", "menu3" );
+        var create = new KeyboardButton(MessageUtil.getMessage("menu.create"));
+        var about = new KeyboardButton(MessageUtil.getMessage("menu.about"));
+        var feedback = new KeyboardButton(MessageUtil.getMessage("menu.feedback"));
 
-        var keyboard = List.of(List.of(menu1),
-                List.of(menu2),
-                List.of(menu3));
+        var keyboard = List.of(
+                new KeyboardRow(List.of(create)),
+                new KeyboardRow(List.of(about)),
+                new KeyboardRow(List.of(feedback))
+        );
 
+
+        return ReplyKeyboardMarkup.builder()
+                .keyboard(keyboard)
+                .build();
+    }
+
+    public static ReplyKeyboard getDocTypeKeyboard() {
+        var panel = button(DocumentType.SOLAR_PANEL.getTitleKeyword(), DocumentType.SOLAR_PANEL.name());
+        var wind = button(DocumentType.WIND.getTitleKeyword(), DocumentType.WIND.name());
+        var service = button(DocumentType.FULL_SERVICE.getTitleKeyword(), DocumentType.FULL_SERVICE.name());
+
+        var keyboard = List.of(
+                List.of(panel),
+                List.of(wind),
+                List.of(service)
+        );
 
         return InlineKeyboardMarkup.builder()
                 .keyboard(keyboard)
+                .build();
+    }
+
+    public static ReplyKeyboard getAccountKeyboard() {
+        var commercial = button(MessageUtil.getMessage("account.commercial"), "commercial");
+        var privateType = button(MessageUtil.getMessage("account.private"), "private");
+
+        return InlineKeyboardMarkup.builder()
+                .keyboardRow(List.of(commercial, privateType))
                 .build();
     }
 }

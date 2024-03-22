@@ -4,20 +4,22 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
 import org.telegram.abilitybots.api.sender.SilentSender;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 import uz.solarnature.solarnaturebot.bot.QuestionaireBot;
-import uz.solarnature.solarnaturebot.domain.entity.Company;
+import uz.solarnature.solarnaturebot.domain.UserData;
+import uz.solarnature.solarnaturebot.domain.entity.Document;
 import uz.solarnature.solarnaturebot.domain.entity.User;
+import uz.solarnature.solarnaturebot.domain.enumeration.DocumentType;
 import uz.solarnature.solarnaturebot.domain.enumeration.UserLanguage;
 import uz.solarnature.solarnaturebot.domain.enumeration.UserState;
-import uz.solarnature.solarnaturebot.repository.CompanyRepository;
+import uz.solarnature.solarnaturebot.repository.DocumentRepository;
 import uz.solarnature.solarnaturebot.repository.UserRepository;
 import uz.solarnature.solarnaturebot.service.UserService;
 import uz.solarnature.solarnaturebot.utils.KeyboardFactory;
 import uz.solarnature.solarnaturebot.utils.MessageUtil;
+import uz.solarnature.solarnaturebot.utils.SendMessageUtil;
 
 import java.util.Map;
 
@@ -25,193 +27,169 @@ import java.util.Map;
 @Service
 public class ResponseHandler {
     private final SilentSender sender;
-    private final Map<Long, UserState> chatStates;
+    private final Map<Long, UserData> chatStates;
     private final UserRepository userRepository;
     private final UserService userService;
-    private final CompanyRepository companyRepository;
+    private final DocumentRepository documentRepository;
 
     public ResponseHandler(QuestionaireBot questionaireBot,
                            UserRepository userRepository,
-                           UserService userService, CompanyRepository companyRepository) {
+                           UserService userService, DocumentRepository documentRepository) {
         this.sender = questionaireBot.silent();
         this.chatStates = questionaireBot.db().getMap(Constants.CHAT_STATES);
         this.userRepository = userRepository;
         this.userService = userService;
-        this.companyRepository = companyRepository;
+        this.documentRepository = documentRepository;
     }
 
     public void replyToMessage(Message message) {
         var chatId = message.getChatId();
-        var state = chatStates.get(chatId);
+        var userData = chatStates.get(chatId);
         var user = getUser(message.getFrom());
-        var company = new Company();
-        company.setChatId(chatId);
 
         if (message.hasText()) {
             var text = message.getText();
 
             switch (text) {
-                case "/start" -> sendLanguageRequest(chatId);
+                case "/start" -> {
+                    sendTextWithKeyboard(chatId, "choose.language", KeyboardFactory.getLanguageKeyboard());
+                    chatStates.put(chatId, UserData.of(UserState.CHOOSE_LANGUAGE));
+                }
             }
 
-            if (state.equals(UserState.PHONE)) {
-                user.setPhone(text);
-                userRepository.save(user);
-                chatStates.put(chatId, UserState.NAME);
-                nameRequest(chatId);
+            switch (userData.getState()) {
+                case MENU -> {
+                    if (text.equals(MessageUtil.getMessage("menu.create"))) {
+                        var doc = new Document();
+                        documentRepository.save(doc);
+                        sendTextWithKeyboard(chatId, "doc.type", KeyboardFactory.getDocTypeKeyboard());
+                        chatStates.put(chatId, UserData.of(UserState.DOCUMENT_TYPE, doc.getId()));
+                    }
 
+                    if (text.equals(MessageUtil.getMessage("menu.about"))) {
+
+                    }
+
+                    if (text.equals(MessageUtil.getMessage("menu.feedback"))) {
+
+                    }
+                }
+
+                case NAME -> {
+                    var doc = documentRepository.getById(userData.getDocId());
+                    doc.setFullName(text);
+                    documentRepository.save(doc);
+                    sendTextWithKeyboard(chatId, "doc.phone", KeyboardFactory.getPhoneKeyboard());
+                    userData.setState(UserState.PHONE);
+                }
+
+                case COMPANY_NAME -> {
+                    var doc = documentRepository.getById(userData.getDocId());
+                    doc.setCompanyName(text);
+                    documentRepository.save(doc);
+                    sendTextMessage(chatId, "doc.company.tin");
+                    userData.setState(UserState.COMPANY_TIN);
+                }
+
+                case COMPANY_TIN -> {
+                    var doc = documentRepository.getById(userData.getDocId());
+                    doc.setTin(text);
+                    documentRepository.save(doc);
+                    sendTextMessage(chatId, "doc.contact.name");
+                    userData.setState(UserState.NAME);
+                }
+
+                case PHONE -> {
+                    var doc = documentRepository.getById(userData.getDocId());
+                    doc.setPhone(text);
+                    documentRepository.save(doc);
+                    sendTextMessage(chatId, "doc.email");
+                    userData.setState(UserState.EMAIL);
+                }
+
+                case EMAIL -> {
+                    var doc = documentRepository.getById(userData.getDocId());
+                    doc.setEmail(text);
+                    documentRepository.save(doc);
+                    sendTextMessage(chatId, "doc.address");
+                    userData.setState(UserState.ADDRESS);
+                }
+
+                case ADDRESS -> {
+                    var doc = documentRepository.getById(userData.getDocId());
+                    doc.setAddress(text);
+                    documentRepository.save(doc);
+                    sendTextMessage(chatId, "doc.others");
+                    userData.setState(UserState.OTHERS);
+                }
+
+                case OTHERS -> {
+                    var doc = documentRepository.getById(userData.getDocId());
+                    doc.setOthers(text);
+                    documentRepository.save(doc);
+                }
             }
-
-            if (state.equals(UserState.NAME)) {
-                user.setFullName(text);
-                userRepository.save(user);
-                chatStates.put(chatId, UserState.MAIL);
-                mailRequest(chatId);
-            }
-
-            if(state.equals(UserState.MAIL)){
-                user.setEmail(text);
-                userRepository.save(user);
-                chatStates.put(chatId, UserState.ADDRESS);
-                addressRequest(chatId);
-            }
-
-            if(state.equals(UserState.ADDRESS)){
-                user.setAddress(text);
-                userRepository.save(user);
-                chatStates.put(chatId, UserState.COMPANY_NAME);
-                companyNameRequest(chatId);
-            }
-
-            if (state.equals(UserState.COMPANY_NAME)){
-                company.setCompanyName(text);
-//                companyRepository.save(company);
-                chatStates.put(chatId, UserState.TIN);
-                companyTINRequest(chatId);
-            }
-
-            if (state.equals(UserState.TIN)){
-                company.setCompanyName(text);
-//                companyRepository.save(company);
-                chatStates.put(chatId, UserState.CONTACT_PERSON);
-                companyPersonRequest(chatId);
-            }
-
-            if (state.equals(UserState.CONTACT_PERSON)){
-                company.setCompanyName(text);
-//                companyRepository.save(company);
-                chatStates.put(chatId, UserState.COMPANY_PHONE_NUMBER);
-                companyPhoneNumberRequest(chatId);
-            }
-
-            if (state.equals(UserState.COMPANY_PHONE_NUMBER)){
-                company.setCompanyName(text);
-//                companyRepository.save(company);
-                chatStates.put(chatId, UserState.COMPANY_MAIL);
-                companyMailRequest(chatId);
-            }
-
-            if (state.equals(UserState.COMPANY_MAIL)){
-                company.setCompanyName(text);
-                companyRepository.save(company);
-                chatStates.put(chatId, UserState.NEXT);
-                companyAddressRequest(chatId);
-            }
-
-
-
-
-
-
 
         }
 
-
-        if (message.hasContact() && state.equals(UserState.PHONE)) {
-            user.setPhone(message.getContact().getPhoneNumber());
-            userRepository.save(user);
-            chatStates.put(chatId, UserState.NAME);
-            nameRequest(chatId);
+        if (message.hasContact() && userData.getState().equals(UserState.PHONE)) {
+            var doc = documentRepository.getById(userData.getDocId());
+            doc.setPhone(message.getContact().getPhoneNumber());
+            documentRepository.save(doc);
+            sendTextMessage(chatId, "doc.email");
+            userData.setState(UserState.EMAIL);
         }
-
-    }
-
-    private void companyAddressRequest(Long chatId) {
-        sentTextMessage(chatId,"company.address");
-    }
-
-    private void companyMailRequest(Long chatId) {
-        sentTextMessage(chatId, "company.mail");
-    }
-
-    private void companyPhoneNumberRequest(Long chatId) {
-        sentTextMessage(chatId, "company.phone.number");
-    }
-
-    private void companyPersonRequest(Long chatId) {
-        sentTextMessage(chatId, "company.person");
-    }
-
-    private void companyTINRequest(Long chatId) {
-        sentTextMessage(chatId, "company.TIN" );
-    }
-
-    private void companyNameRequest(Long chatId) {
-        sentTextMessage(chatId, "company.name");
-    }
-
-
-
-    private void nameRequest(Long chatId) {
-        sentTextMessage(chatId, "user.name");
-    }
-
-    private void addressRequest(Long chatId) {
-        sentTextMessage(chatId, "user.address");
-
-    }
-
-    private void mailRequest(Long chatId) {
-        sentTextMessage(chatId, "user.mail");
-    }
-
-    private void sendMenu(Long chatId) {
-        var message = SendMessage.builder()
-                .chatId(chatId)
-                .text("Choose menu")
-                .replyMarkup(KeyboardFactory.getMenuKeyboard())
-                .build();
-        sender.execute(message);
 
     }
 
     public void replyToCallBackQuery(CallbackQuery callbackQuery) {
         var user = getUser(callbackQuery.getFrom());
         var chatId = callbackQuery.getFrom().getId();
+        var userData = chatStates.get(chatId);
         var data = callbackQuery.getData();
 
-
-        switch (chatStates.get(chatId)) {
+        switch (userData.getState()) {
             case CHOOSE_LANGUAGE -> {
                 user.setLanguage(UserLanguage.valueOf(data));
                 userRepository.save(user);
-                sendPhoneRequest(chatId);
+                sendTextWithKeyboard(chatId, "choose.menu", KeyboardFactory.getMenuKeyboard());
+                userData.setState(UserState.MENU);
+            }
+
+            case DOCUMENT_TYPE -> {
+                var doc = documentRepository.getById(userData.getDocId());
+                doc.setDocumentType(DocumentType.valueOf(data));
+                documentRepository.save(doc);
+                sendTextWithKeyboard(chatId, "doc.account.type", KeyboardFactory.getAccountKeyboard());
+                userData.setState(UserState.ACCOUNT_TYPE);
+            }
+
+            case ACCOUNT_TYPE -> {
+                var doc = documentRepository.getById(userData.getDocId());
+                doc.setBusiness(data.equals("commercial"));
+                documentRepository.save(doc);
+
+                if (doc.isBusiness()) {
+                    sendTextMessage(chatId, "doc.company.name");
+                    userData.setState(UserState.COMPANY_NAME);
+                } else {
+                    sendTextMessage(chatId, "doc.name");
+                    userData.setState(UserState.NAME);
+                }
             }
         }
 
     }
 
-    private void sentTextMessage(Long chatId, String text) {
-        var message = SendMessage.builder()
-                .text(MessageUtil.getMessage(text))
-                .replyMarkup(new ReplyKeyboardRemove(true))
-                .chatId(chatId)
-                .build();
-
+    private void sendTextMessage(Long chatId, String text) {
+        var message = SendMessageUtil.textMessage(chatId, text);
         sender.execute(message);
     }
 
-
+    private void sendTextWithKeyboard(Long chatId, String text, ReplyKeyboard keyboard) {
+        var message = SendMessageUtil.textMessageWithKeyboard(chatId, text, keyboard);
+        sender.execute(message);
+    }
 
     public User getUser(org.telegram.telegrambots.meta.api.objects.User tgUser) {
         var optional = userRepository.findByChatId(tgUser.getId());
@@ -220,27 +198,5 @@ public class ResponseHandler {
         return user;
     }
 
-    public void sendLanguageRequest(Long chatId) {
-        var message = SendMessage.builder()
-                .chatId(chatId)
-                .text("Choose language!")
-                .replyMarkup(KeyboardFactory.getLanguageKeyboard())
-                .build();
-
-        sender.execute(message);
-        chatStates.put(chatId, UserState.CHOOSE_LANGUAGE);
-    }
-
-    public void sendPhoneRequest(Long chatId) {
-        var message = SendMessage.builder()
-                .chatId(chatId)
-                .text(MessageUtil.getMessage("enter.phone"))
-                .replyMarkup(KeyboardFactory.getPhoneKeyboard())
-                .build();
-
-        sender.execute(message);
-        chatStates.put(chatId, UserState.PHONE);
-
-    }
 }
 

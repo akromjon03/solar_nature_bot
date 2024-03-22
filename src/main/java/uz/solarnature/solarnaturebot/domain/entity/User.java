@@ -25,10 +25,6 @@ public class User {
 
     private String phone;
 
-    private String email;
-
-    private String address;
-
     @Enumerated(EnumType.STRING)
     private UserLanguage language;
 
