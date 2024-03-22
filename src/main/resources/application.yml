@@ -9,7 +9,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/solar_nature
     username: postgres
-    password: 1
+    password: 123
   messages:
     basename: i18n/messages
 

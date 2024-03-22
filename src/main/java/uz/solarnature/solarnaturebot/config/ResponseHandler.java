@@ -9,15 +9,16 @@ import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
 import uz.solarnature.solarnaturebot.bot.QuestionaireBot;
+import uz.solarnature.solarnaturebot.domain.entity.Company;
 import uz.solarnature.solarnaturebot.domain.entity.User;
 import uz.solarnature.solarnaturebot.domain.enumeration.UserLanguage;
 import uz.solarnature.solarnaturebot.domain.enumeration.UserState;
+import uz.solarnature.solarnaturebot.repository.CompanyRepository;
 import uz.solarnature.solarnaturebot.repository.UserRepository;
 import uz.solarnature.solarnaturebot.service.UserService;
 import uz.solarnature.solarnaturebot.utils.KeyboardFactory;
 import uz.solarnature.solarnaturebot.utils.MessageUtil;
 
-import java.util.Locale;
 import java.util.Map;
 
 @Slf4j
@@ -27,20 +28,25 @@ public class ResponseHandler {
     private final Map<Long, UserState> chatStates;
     private final UserRepository userRepository;
     private final UserService userService;
+    private final CompanyRepository companyRepository;
 
     public ResponseHandler(QuestionaireBot questionaireBot,
                            UserRepository userRepository,
-                           UserService userService) {
+                           UserService userService, CompanyRepository companyRepository) {
         this.sender = questionaireBot.silent();
         this.chatStates = questionaireBot.db().getMap(Constants.CHAT_STATES);
         this.userRepository = userRepository;
         this.userService = userService;
+        this.companyRepository = companyRepository;
     }
 
     public void replyToMessage(Message message) {
         var chatId = message.getChatId();
         var state = chatStates.get(chatId);
         var user = getUser(message.getFrom());
+        var company = new Company();
+        company.setChatId(chatId);
+
         if (message.hasText()) {
             var text = message.getText();
 
@@ -51,8 +57,9 @@ public class ResponseHandler {
             if (state.equals(UserState.PHONE)) {
                 user.setPhone(text);
                 userRepository.save(user);
-                chatStates.put(chatId, UserState.MENU);
-                sendMenu(chatId);
+                chatStates.put(chatId, UserState.NAME);
+                nameRequest(chatId);
+
             }
 
             if (state.equals(UserState.NAME)) {
@@ -72,9 +79,47 @@ public class ResponseHandler {
             if(state.equals(UserState.ADDRESS)){
                 user.setAddress(text);
                 userRepository.save(user);
-                chatStates.put(chatId, UserState.NEXT);
-
+                chatStates.put(chatId, UserState.COMPANY_NAME);
+                companyNameRequest(chatId);
             }
+
+            if (state.equals(UserState.COMPANY_NAME)){
+                company.setCompanyName(text);
+//                companyRepository.save(company);
+                chatStates.put(chatId, UserState.TIN);
+                companyTINRequest(chatId);
+            }
+
+            if (state.equals(UserState.TIN)){
+                company.setCompanyName(text);
+//                companyRepository.save(company);
+                chatStates.put(chatId, UserState.CONTACT_PERSON);
+                companyPersonRequest(chatId);
+            }
+
+            if (state.equals(UserState.CONTACT_PERSON)){
+                company.setCompanyName(text);
+//                companyRepository.save(company);
+                chatStates.put(chatId, UserState.COMPANY_PHONE_NUMBER);
+                companyPhoneNumberRequest(chatId);
+            }
+
+            if (state.equals(UserState.COMPANY_PHONE_NUMBER)){
+                company.setCompanyName(text);
+//                companyRepository.save(company);
+                chatStates.put(chatId, UserState.COMPANY_MAIL);
+                companyMailRequest(chatId);
+            }
+
+            if (state.equals(UserState.COMPANY_MAIL)){
+                company.setCompanyName(text);
+                companyRepository.save(company);
+                chatStates.put(chatId, UserState.NEXT);
+                companyAddressRequest(chatId);
+            }
+
+
+
 
 
 
@@ -85,19 +130,49 @@ public class ResponseHandler {
         if (message.hasContact() && state.equals(UserState.PHONE)) {
             user.setPhone(message.getContact().getPhoneNumber());
             userRepository.save(user);
-            chatStates.put(chatId, UserState.MENU);
-            sendMenu(chatId);
+            chatStates.put(chatId, UserState.NAME);
+            nameRequest(chatId);
         }
 
     }
 
+    private void companyAddressRequest(Long chatId) {
+        sentTextMessage(chatId,"company.address");
+    }
+
+    private void companyMailRequest(Long chatId) {
+        sentTextMessage(chatId, "company.mail");
+    }
+
+    private void companyPhoneNumberRequest(Long chatId) {
+        sentTextMessage(chatId, "company.phone.number");
+    }
+
+    private void companyPersonRequest(Long chatId) {
+        sentTextMessage(chatId, "company.person");
+    }
+
+    private void companyTINRequest(Long chatId) {
+        sentTextMessage(chatId, "company.TIN" );
+    }
+
+    private void companyNameRequest(Long chatId) {
+        sentTextMessage(chatId, "company.name");
+    }
+
+
+
+    private void nameRequest(Long chatId) {
+        sentTextMessage(chatId, "user.name");
+    }
+
     private void addressRequest(Long chatId) {
-        sentTextMessage(chatId, "Enter address:");
+        sentTextMessage(chatId, "user.address");
 
     }
 
     private void mailRequest(Long chatId) {
-        sentTextMessage(chatId, "Enter mail: ");
+        sentTextMessage(chatId, "user.mail");
     }
 
     private void sendMenu(Long chatId) {
@@ -122,37 +197,21 @@ public class ResponseHandler {
                 userRepository.save(user);
                 sendPhoneRequest(chatId);
             }
-
-            case MENU -> {
-                switch (data) {
-                    case "menu1" -> {
-                        sentTextMessage(chatId, "Enter full name");
-                        chatStates.put(chatId, UserState.NAME);
-                    }
-                    case "menu2" -> menu2(chatId);
-                    case "menu3" -> menu3(chatId);
-                }
-            }
-
         }
 
     }
 
     private void sentTextMessage(Long chatId, String text) {
         var message = SendMessage.builder()
-                .text(text)
+                .text(MessageUtil.getMessage(text))
+                .replyMarkup(new ReplyKeyboardRemove(true))
                 .chatId(chatId)
                 .build();
 
         sender.execute(message);
     }
 
-    private void menu2(Long chatId) {
 
-    }
-
-    private void menu3(Long chatId) {
-    }
 
     public User getUser(org.telegram.telegrambots.meta.api.objects.User tgUser) {
         var optional = userRepository.findByChatId(tgUser.getId());
