@@ -21,6 +21,7 @@ import uz.solarnature.solarnaturebot.utils.KeyboardFactory;
 import uz.solarnature.solarnaturebot.utils.MessageUtil;
 import uz.solarnature.solarnaturebot.utils.SendMessageUtil;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
@@ -52,6 +53,7 @@ public class ResponseHandler {
 
             switch (text) {
                 case "/start" -> {
+
                     sendTextWithKeyboard(chatId, "choose.language", KeyboardFactory.getLanguageKeyboard());
                     chatStates.put(chatId, UserData.of(UserState.CHOOSE_LANGUAGE));
                 }
@@ -80,7 +82,7 @@ public class ResponseHandler {
                     doc.setFullName(text);
                     documentRepository.save(doc);
                     sendTextWithKeyboard(chatId, "doc.phone", KeyboardFactory.getPhoneKeyboard());
-                    userData.setState(UserState.PHONE);
+                    chatStates.put(chatId, UserData.of(UserState.PHONE, doc.getId()));
                 }
 
                 case COMPANY_NAME -> {
@@ -88,7 +90,7 @@ public class ResponseHandler {
                     doc.setCompanyName(text);
                     documentRepository.save(doc);
                     sendTextMessage(chatId, "doc.company.tin");
-                    userData.setState(UserState.COMPANY_TIN);
+                    chatStates.put(chatId, UserData.of(UserState.COMPANY_TIN, doc.getId()));
                 }
 
                 case COMPANY_TIN -> {
@@ -96,7 +98,7 @@ public class ResponseHandler {
                     doc.setTin(text);
                     documentRepository.save(doc);
                     sendTextMessage(chatId, "doc.contact.name");
-                    userData.setState(UserState.NAME);
+                    chatStates.put(chatId, UserData.of(UserState.MENU, doc.getId()));
                 }
 
                 case PHONE -> {
@@ -105,6 +107,7 @@ public class ResponseHandler {
                     documentRepository.save(doc);
                     sendTextMessage(chatId, "doc.email");
                     userData.setState(UserState.EMAIL);
+                    chatStates.put(chatId, UserData.of(UserState.EMAIL, doc.getId()));
                 }
 
                 case EMAIL -> {
@@ -112,7 +115,7 @@ public class ResponseHandler {
                     doc.setEmail(text);
                     documentRepository.save(doc);
                     sendTextMessage(chatId, "doc.address");
-                    userData.setState(UserState.ADDRESS);
+                    chatStates.put(chatId, UserData.of(UserState.ADDRESS, doc.getId()));
                 }
 
                 case ADDRESS -> {
@@ -120,7 +123,7 @@ public class ResponseHandler {
                     doc.setAddress(text);
                     documentRepository.save(doc);
                     sendTextMessage(chatId, "doc.others");
-                    userData.setState(UserState.OTHERS);
+                    chatStates.put(chatId, UserData.of(UserState.OTHERS, doc.getId()));
                 }
 
                 case OTHERS -> {
@@ -137,7 +140,8 @@ public class ResponseHandler {
             doc.setPhone(message.getContact().getPhoneNumber());
             documentRepository.save(doc);
             sendTextMessage(chatId, "doc.email");
-            userData.setState(UserState.EMAIL);
+//            userData.setState(UserState.EMAIL);
+            chatStates.put(chatId, UserData.of(UserState.EMAIL));
         }
 
     }
@@ -153,7 +157,7 @@ public class ResponseHandler {
                 user.setLanguage(UserLanguage.valueOf(data));
                 userRepository.save(user);
                 sendTextWithKeyboard(chatId, "choose.menu", KeyboardFactory.getMenuKeyboard());
-                userData.setState(UserState.MENU);
+                chatStates.put(chatId, UserData.of(UserState.MENU));
             }
 
             case DOCUMENT_TYPE -> {
@@ -161,7 +165,7 @@ public class ResponseHandler {
                 doc.setDocumentType(DocumentType.valueOf(data));
                 documentRepository.save(doc);
                 sendTextWithKeyboard(chatId, "doc.account.type", KeyboardFactory.getAccountKeyboard());
-                userData.setState(UserState.ACCOUNT_TYPE);
+                chatStates.put(chatId, UserData.of(UserState.ACCOUNT_TYPE));
             }
 
             case ACCOUNT_TYPE -> {
@@ -171,11 +175,14 @@ public class ResponseHandler {
 
                 if (doc.isBusiness()) {
                     sendTextMessage(chatId, "doc.company.name");
-                    userData.setState(UserState.COMPANY_NAME);
+                    chatStates.put(chatId, UserData.of(UserState.COMPANY_NAME));
                 } else {
                     sendTextMessage(chatId, "doc.name");
-                    userData.setState(UserState.NAME);
+                    chatStates.put(chatId, UserData.of(UserState.NAME));
                 }
+            }
+            default -> {
+                System.out.println("_________asdasd__________");
             }
         }
 

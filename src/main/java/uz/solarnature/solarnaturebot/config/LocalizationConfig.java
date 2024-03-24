@@ -16,7 +16,7 @@ public class LocalizationConfig {
         var messageSource = new ResourceBundleMessageSource();
         messageSource.setBasenames("messages");
         messageSource.setDefaultEncoding("UTF-8");
-        messageSource.setDefaultLocale(UserLanguage.RUSSIAN.getLocale());
+        messageSource.setDefaultLocale(UserLanguage.ENGLISH.getLocale());
         return messageSource;
     }
 

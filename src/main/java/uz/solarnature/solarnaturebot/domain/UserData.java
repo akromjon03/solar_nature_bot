@@ -1,10 +1,17 @@
 package uz.solarnature.solarnaturebot.domain;
 
+
 import lombok.Data;
 import uz.solarnature.solarnaturebot.domain.enumeration.UserState;
 
+import java.io.Serial;
+import java.io.Serializable;
+
 @Data
-public class UserData {
+public class UserData implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     private UserState state;
     private Long docId;
@@ -20,5 +27,7 @@ public class UserData {
         data.setState(state);
         return data;
     }
+
+
 
 }
