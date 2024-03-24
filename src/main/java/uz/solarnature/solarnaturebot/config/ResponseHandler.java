@@ -10,6 +10,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 import uz.solarnature.solarnaturebot.bot.QuestionaireBot;
 import uz.solarnature.solarnaturebot.domain.UserData;
 import uz.solarnature.solarnaturebot.domain.entity.Document;
+import uz.solarnature.solarnaturebot.domain.entity.Feedback;
 import uz.solarnature.solarnaturebot.domain.entity.User;
 import uz.solarnature.solarnaturebot.domain.enumeration.DocumentType;
 import uz.solarnature.solarnaturebot.domain.enumeration.UserLanguage;
@@ -17,6 +18,7 @@ import uz.solarnature.solarnaturebot.domain.enumeration.UserState;
 import uz.solarnature.solarnaturebot.domain.enumeration.types.BuildingType;
 import uz.solarnature.solarnaturebot.domain.enumeration.types.StationType;
 import uz.solarnature.solarnaturebot.repository.DocumentRepository;
+import uz.solarnature.solarnaturebot.repository.FeedbackRepository;
 import uz.solarnature.solarnaturebot.repository.UserRepository;
 import uz.solarnature.solarnaturebot.service.UserService;
 import uz.solarnature.solarnaturebot.utils.KeyboardFactory;
@@ -24,7 +26,6 @@ import uz.solarnature.solarnaturebot.utils.MessageUtil;
 import uz.solarnature.solarnaturebot.utils.SendMessageUtil;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.Map;
 
 @Slf4j
@@ -35,15 +36,17 @@ public class ResponseHandler {
     private final UserRepository userRepository;
     private final UserService userService;
     private final DocumentRepository documentRepository;
+    private final FeedbackRepository feedbackRepository;
 
     public ResponseHandler(QuestionaireBot questionaireBot,
                            UserRepository userRepository,
-                           UserService userService, DocumentRepository documentRepository) {
+                           UserService userService, DocumentRepository documentRepository, FeedbackRepository feedbackRepository) {
         this.sender = questionaireBot.silent();
         this.chatStates = questionaireBot.db().getMap(Constants.CHAT_STATES);
         this.userRepository = userRepository;
         this.userService = userService;
         this.documentRepository = documentRepository;
+        this.feedbackRepository = feedbackRepository;
     }
 
     public void replyToMessage(Message message) {
@@ -73,12 +76,21 @@ public class ResponseHandler {
                     }
 
                     if (text.equals(MessageUtil.getMessage("menu.about"))) {
-
+                        sendText(chatId, "about.text");
                     }
 
                     if (text.equals(MessageUtil.getMessage("menu.feedback"))) {
-
+                        sendText(chatId, "feedback.request");
+                        chatStates.put(chatId, UserData.of(UserState.FEEDBACK));
                     }
+                }
+
+                case FEEDBACK -> {
+                    var feedback = new Feedback();
+                    feedback.setUser(user);
+                    feedback.setText(text);
+                    feedbackRepository.save(feedback);
+                    sendText(chatId, "feedback.response");
                 }
 
                 case NAME -> {
