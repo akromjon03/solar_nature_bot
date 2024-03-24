@@ -7,11 +7,11 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum DocumentType {
 
-    SOLAR_PANEL("panel.title", "panel.description"),
-    WIND("wind.title", "wind.description"),
-    FULL_SERVICE("fullservice.title", "fullservice.description");
+    SOLAR_PANEL("doc.type.panel.title", "panel.description"),
+    WIND("doc.type.wind.title", "wind.description"),
+    FULL_SERVICE("doc.type.fullservice.title", "fullservice.description");
 
-    private final String descriptionKeyword;
     private final String titleKeyword;
+    private final String descriptionKeyword;
 
 }

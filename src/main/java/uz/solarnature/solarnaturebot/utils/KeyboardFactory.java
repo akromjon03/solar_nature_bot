@@ -9,7 +9,10 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import uz.solarnature.solarnaturebot.domain.enumeration.DocumentType;
 import uz.solarnature.solarnaturebot.domain.enumeration.UserLanguage;
+import uz.solarnature.solarnaturebot.domain.enumeration.types.BuildingType;
+import uz.solarnature.solarnaturebot.domain.enumeration.types.StationType;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class KeyboardFactory {
@@ -38,7 +41,7 @@ public class KeyboardFactory {
     }
 
     public static ReplyKeyboard getPhoneKeyboard() {
-        var button = new KeyboardButton(MessageUtil.getMessage("share.phone"));
+        var button = new KeyboardButton(MessageUtil.getMessage("doc.phone.button"));
         button.setRequestContact(true);
 
 
@@ -65,19 +68,19 @@ public class KeyboardFactory {
 
         return ReplyKeyboardMarkup.builder()
                 .keyboard(keyboard)
+                .oneTimeKeyboard(true)
+                .resizeKeyboard(true)
                 .build();
     }
 
     public static ReplyKeyboard getDocTypeKeyboard() {
-        var panel = button(DocumentType.SOLAR_PANEL.getTitleKeyword(), DocumentType.SOLAR_PANEL.name());
-        var wind = button(DocumentType.WIND.getTitleKeyword(), DocumentType.WIND.name());
-        var service = button(DocumentType.FULL_SERVICE.getTitleKeyword(), DocumentType.FULL_SERVICE.name());
+        var keyboard = new ArrayList<List<InlineKeyboardButton>>();
 
-        var keyboard = List.of(
-                List.of(panel),
-                List.of(wind),
-                List.of(service)
-        );
+        for (DocumentType type: DocumentType.values()) {
+            keyboard.add(List.of(
+                    button(MessageUtil.getMessage(type.getTitleKeyword()), type.name())
+            ));
+        }
 
         return InlineKeyboardMarkup.builder()
                 .keyboard(keyboard)
@@ -85,11 +88,48 @@ public class KeyboardFactory {
     }
 
     public static ReplyKeyboard getAccountKeyboard() {
-        var commercial = button(MessageUtil.getMessage("account.commercial"), "commercial");
-        var privateType = button(MessageUtil.getMessage("account.private"), "private");
+        var commercial = button(MessageUtil.getMessage("doc.account.commercial"), "commercial");
+        var privateType = button(MessageUtil.getMessage("doc.account.private"), "private");
 
         return InlineKeyboardMarkup.builder()
                 .keyboardRow(List.of(commercial, privateType))
+                .build();
+    }
+
+    public static ReplyKeyboard getOtherKeyboard() {
+        var no = new KeyboardButton(MessageUtil.getMessage("doc.other.no.button"));
+        return ReplyKeyboardMarkup.builder()
+                .keyboardRow(new KeyboardRow(List.of(no)))
+                .resizeKeyboard(true)
+                .oneTimeKeyboard(true)
+                .build();
+    }
+
+    public static ReplyKeyboard getStationTypeKeyboard() {
+        var keyboard = new ArrayList<List<InlineKeyboardButton>>();
+
+        for (StationType type: StationType.values()) {
+            keyboard.add(List.of(
+                    button(MessageUtil.getMessage(type.getTitleKeyword()), type.name())
+            ));
+        }
+
+        return InlineKeyboardMarkup.builder()
+                .keyboard(keyboard)
+                .build();
+    }
+
+    public static ReplyKeyboard getBuildingTypeKeyboard() {
+        var keyboard = new ArrayList<List<InlineKeyboardButton>>();
+
+        for (BuildingType type: BuildingType.values()) {
+            keyboard.add(List.of(
+                    button(MessageUtil.getMessage(type.getTitleKeyword()), type.name())
+            ));
+        }
+
+        return InlineKeyboardMarkup.builder()
+                .keyboard(keyboard)
                 .build();
     }
 }

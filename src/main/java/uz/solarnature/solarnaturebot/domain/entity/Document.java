@@ -34,7 +34,8 @@ public class Document {
     private String tin;
 
     private LocalDate visitDate;
-    private LocalDateTime contactTime;
+    private String contactTime;
+    private String commercialOffer;
 
     @Enumerated(EnumType.STRING)
     private StationType stationType;
@@ -46,7 +47,6 @@ public class Document {
 
     private String plan;
     private String paymentForm;
-    private String commercialOffer;
 
     private String sesPower;
     private String panel;
