@@ -5,7 +5,7 @@ import lombok.RequiredArgsConstructor;
 
 @Getter
 @RequiredArgsConstructor
-public enum BuildingType {
+public enum BuildingType implements GeneralType {
 
     COTTAGE("doc.building.type.cottage.title"),
     SHOP("doc.building.type.shop.title"),

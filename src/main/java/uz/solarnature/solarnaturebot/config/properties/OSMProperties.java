@@ -3,8 +3,8 @@ package uz.solarnature.solarnaturebot.config.properties;
 import lombok.Data;
 
 @Data
-public class FileStorageProperties {
+public class OSMProperties {
 
-    private String checklistsFolder;
+    private String url;
 
 }

@@ -9,8 +9,9 @@ public class ApplicationProperties {
 
     private FileStorageProperties fileStorage = new FileStorageProperties();
     private BotProperties bot = new BotProperties();
+    private OSMProperties osm = new OSMProperties();
 
-    public String getFileStorageRoot() {
-        return fileStorage.getRootPath();
+    public String getChecklistFolder() {
+        return fileStorage.getChecklistsFolder();
     }
 }

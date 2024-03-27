@@ -5,7 +5,7 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public enum StationType {
+public enum StationType implements GeneralType {
 
     ROOF("doc.station.type.roof.title"),
     GROUND("doc.station.type.ground.title"),

@@ -7,24 +7,24 @@ import org.telegram.abilitybots.api.sender.SilentSender;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import uz.solarnature.solarnaturebot.bot.QuestionaireBot;
 import uz.solarnature.solarnaturebot.domain.UserData;
 import uz.solarnature.solarnaturebot.domain.entity.Document;
 import uz.solarnature.solarnaturebot.domain.entity.User;
-import uz.solarnature.solarnaturebot.domain.enumeration.DocumentType;
+import uz.solarnature.solarnaturebot.domain.enumeration.types.*;
 import uz.solarnature.solarnaturebot.domain.enumeration.UserLanguage;
 import uz.solarnature.solarnaturebot.domain.enumeration.UserState;
-import uz.solarnature.solarnaturebot.domain.enumeration.types.BuildingType;
-import uz.solarnature.solarnaturebot.domain.enumeration.types.StationType;
 import uz.solarnature.solarnaturebot.repository.DocumentRepository;
 import uz.solarnature.solarnaturebot.repository.UserRepository;
+import uz.solarnature.solarnaturebot.service.FileService;
 import uz.solarnature.solarnaturebot.service.UserService;
+import uz.solarnature.solarnaturebot.utils.AddressUtil;
 import uz.solarnature.solarnaturebot.utils.KeyboardFactory;
 import uz.solarnature.solarnaturebot.utils.MessageUtil;
-import uz.solarnature.solarnaturebot.utils.SendMessageUtil;
+import uz.solarnature.solarnaturebot.utils.TgMethodUtil;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.Map;
 
 @Slf4j
@@ -35,20 +35,29 @@ public class ResponseHandler {
     private final UserRepository userRepository;
     private final UserService userService;
     private final DocumentRepository documentRepository;
+    private final AddressUtil addressUtil;
+    private final FileService fileService;
+    private final QuestionaireBot bot;
 
     public ResponseHandler(QuestionaireBot questionaireBot,
                            UserRepository userRepository,
-                           UserService userService, DocumentRepository documentRepository) {
+                           UserService userService,
+                           DocumentRepository documentRepository,
+                           AddressUtil addressUtil,
+                           FileService fileService) {
+        this.bot = questionaireBot;
         this.sender = questionaireBot.silent();
         this.chatStates = questionaireBot.db().getMap(Constants.CHAT_STATES);
         this.userRepository = userRepository;
         this.userService = userService;
         this.documentRepository = documentRepository;
+        this.addressUtil = addressUtil;
+        this.fileService = fileService;
     }
 
     public void replyToMessage(Message message) {
         var chatId = message.getChatId();
-        var userData = chatStates.get(chatId);
+        var userData = getUserData(chatId);
         var user = getUser(message.getFrom());
 
         if (message.hasText()) {
@@ -56,19 +65,23 @@ public class ResponseHandler {
 
             switch (text) {
                 case "/start" -> {
-
                     sendTextWithKeyboard(chatId, "choose.language", KeyboardFactory.getLanguageKeyboard());
                     chatStates.put(chatId, UserData.of(UserState.CHOOSE_LANGUAGE));
                 }
             }
 
             switch (userData.getState()) {
+                case NOT_STARTED -> {
+                    sendTextWithKeyboard(chatId, "choose.language", KeyboardFactory.getLanguageKeyboard());
+                    chatStates.put(chatId, UserData.of(UserState.CHOOSE_LANGUAGE));
+                }
+
                 case MENU -> {
                     if (text.equals(MessageUtil.getMessage("menu.create"))) {
                         var doc = new Document();
                         doc.setUser(user);
                         documentRepository.save(doc);
-                        sendTextWithKeyboard(chatId, "doc.type", KeyboardFactory.getDocTypeKeyboard());
+                        sendTextWithKeyboard(chatId, "doc.type", KeyboardFactory.getKeyboardByEnumValues(DocumentType.values()));
                         chatStates.put(chatId, UserData.of(UserState.DOCUMENT_TYPE, doc.getId()));
                     }
 
@@ -78,6 +91,11 @@ public class ResponseHandler {
 
                     if (text.equals(MessageUtil.getMessage("menu.feedback"))) {
 
+                    }
+
+                    if (text.equals(MessageUtil.getMessage("menu.lang"))) {
+                        sendTextWithKeyboard(chatId, "choose.language", KeyboardFactory.getLanguageKeyboard());
+                        chatStates.put(chatId, UserData.of(UserState.CHOOSE_LANGUAGE));
                     }
                 }
 
@@ -118,7 +136,7 @@ public class ResponseHandler {
                     var doc = documentRepository.findOne(userData.getDocId());
                     doc.setEmail(text);
                     documentRepository.save(doc);
-                    sendText(chatId, "doc.address");
+                    sendTextWithKeyboard(chatId, "doc.address", KeyboardFactory.getAddressKeyboard());
                     chatStates.put(chatId, UserData.of(UserState.ADDRESS, doc.getId()));
                 }
 
@@ -137,7 +155,7 @@ public class ResponseHandler {
 
                     switch (doc.getDocumentType()) {
                         case SOLAR_PANEL, FULL_SERVICE -> {
-                            sendTextWithKeyboard(chatId, "doc.station.type", KeyboardFactory.getStationTypeKeyboard());
+                            sendTextWithKeyboard(chatId, "doc.station.type", KeyboardFactory.getKeyboardByEnumValues(StationType.values()));
                             chatStates.put(chatId, UserData.of(UserState.STATION_TYPE, doc.getId()));
                         }
 
@@ -170,37 +188,29 @@ public class ResponseHandler {
                     doc.setPlan(text);
                     documentRepository.save(doc);
 
-                    sendText(chatId, "doc.payment.form");
+                    sendTextWithKeyboard(chatId, "doc.payment.form", KeyboardFactory.getKeyboardByEnumValues(PaymentForm.values()));
                     chatStates.put(chatId, UserData.of(UserState.PAYMENT_FORM, doc.getId()));
-                }
-
-                case PAYMENT_FORM -> {
-                    var doc = documentRepository.findOne(userData.getDocId());
-                    doc.setPaymentForm(text);
-                    documentRepository.save(doc);
-                    sendText(chatId, "doc.visit.date");
-                    chatStates.put(chatId, UserData.of(UserState.VISIT_DATE, doc.getId()));
                 }
 
                 case SES_POWER -> {
                     var doc = documentRepository.findOne(userData.getDocId());
                     doc.setSesPower(text);
                     documentRepository.save(doc);
-                    sendText(chatId, "doc.tool.type.panel");
+                    sendTextWithKeyboard(chatId, "doc.tool.type.panel", KeyboardFactory.getKeyboardByEnumValues(PanelBrands.values()));
                     chatStates.put(chatId, UserData.of(UserState.TOOL_TYPE_PANEL, doc.getId()));
                 }
 
-                case TOOL_TYPE_PANEL -> {
+                case TOOL_TYPE_PANEL_OTHER -> {
                     var doc = documentRepository.findOne(userData.getDocId());
-                    doc.setPanel(text);
+                    doc.setPanelOther(text);
                     documentRepository.save(doc);
-                    sendText(chatId, "doc.tool.type.inverter");
+                    sendTextWithKeyboard(chatId, "doc.tool.type.inverter", KeyboardFactory.getKeyboardByEnumValues(InverterBrands.values()));
                     chatStates.put(chatId, UserData.of(UserState.TOOL_TYPE_INVERTER, doc.getId()));
                 }
 
-                case TOOL_TYPE_INVERTER -> {
+                case TOOL_TYPE_INVERTER_OTHER -> {
                     var doc = documentRepository.findOne(userData.getDocId());
-                    doc.setInverter(text);
+                    doc.setInverterOther(text);
                     documentRepository.save(doc);
                     sendText(chatId, "doc.visit.date");
                     chatStates.put(chatId, UserData.of(UserState.VISIT_DATE, doc.getId()));
@@ -223,14 +233,6 @@ public class ResponseHandler {
                     var doc = documentRepository.findOne(userData.getDocId());
                     doc.setContactTime(text);
                     documentRepository.save(doc);
-                    sendTextWithKeyboard(chatId, "doc.commercial.offer", KeyboardFactory.getOtherKeyboard());
-                    chatStates.put(chatId, UserData.of(UserState.COMMERCIAL_OFFER, doc.getId()));
-                }
-
-                case COMMERCIAL_OFFER -> {
-                    var doc = documentRepository.findOne(userData.getDocId());
-                    doc.setCommercialOffer(text);
-                    documentRepository.save(doc);
                     sendTextWithKeyboard(chatId, "doc.final.text", KeyboardFactory.getMenuKeyboard());
                     chatStates.put(chatId, UserData.of(UserState.MENU));
                 }
@@ -247,18 +249,30 @@ public class ResponseHandler {
             chatStates.put(chatId, UserData.of(UserState.EMAIL, doc.getId()));
         }
 
+        if (message.hasLocation() && userData.getState().equals(UserState.ADDRESS)) {
+            var doc = documentRepository.findOne(userData.getDocId());
+            doc.setAddress(addressUtil.getByCoordinates(
+                    message.getLocation().getLatitude(),
+                    message.getLocation().getLongitude()
+            ));
+            documentRepository.save(doc);
+            sendTextWithKeyboard(chatId, "doc.others", KeyboardFactory.getOtherKeyboard());
+            chatStates.put(chatId, UserData.of(UserState.OTHERS, doc.getId()));
+        }
+
     }
 
     public void replyToCallBackQuery(CallbackQuery callbackQuery) {
         var user = getUser(callbackQuery.getFrom());
         var chatId = callbackQuery.getFrom().getId();
-        var userData = chatStates.get(chatId);
+        var userData = getUserData(chatId);
         var data = callbackQuery.getData();
 
         switch (userData.getState()) {
             case CHOOSE_LANGUAGE -> {
                 user.setLanguage(UserLanguage.valueOf(data));
                 userRepository.save(user);
+                LocaleContextHolder.setLocale(user.getLanguage().getLocale());
                 sendTextWithKeyboard(chatId, "choose.menu", KeyboardFactory.getMenuKeyboard());
                 chatStates.put(chatId, UserData.of(UserState.MENU));
             }
@@ -276,12 +290,28 @@ public class ResponseHandler {
                 doc.setBusiness(data.equals("commercial"));
                 documentRepository.save(doc);
 
-                if (doc.isBusiness()) {
-                    sendText(chatId, "doc.company.name");
-                    chatStates.put(chatId, UserData.of(UserState.COMPANY_NAME, doc.getId()));
+                sendTextWithKeyboard(chatId, "doc.filling.type", KeyboardFactory.getKeyboardByEnumValues(FillingType.values()));
+                chatStates.put(chatId, UserData.of(UserState.FILLING_TYPE, doc.getId()));
+            }
+
+            case FILLING_TYPE -> {
+                var fillingType = FillingType.valueOf(data);
+                var doc = documentRepository.findOne(userData.getDocId());
+                doc.setFillingType(fillingType);
+                documentRepository.save(doc);
+
+                if (FillingType.ONLINE.equals(fillingType)) {
+                    if (doc.isBusiness()) {
+                        sendText(chatId, "doc.company.name");
+                        chatStates.put(chatId, UserData.of(UserState.COMPANY_NAME, doc.getId()));
+                    } else {
+                        sendText(chatId, "doc.name");
+                        chatStates.put(chatId, UserData.of(UserState.NAME, doc.getId()));
+                    }
                 } else {
-                    sendText(chatId, "doc.name");
-                    chatStates.put(chatId, UserData.of(UserState.NAME, doc.getId()));
+                    sendFile(chatId, doc);
+                    sendTextWithKeyboard(chatId, "doc.final.text", KeyboardFactory.getMenuKeyboard());
+                    chatStates.put(chatId, UserData.of(UserState.MENU));
                 }
             }
 
@@ -314,13 +344,73 @@ public class ResponseHandler {
                 }
             }
 
+            case TOOL_TYPE_PANEL -> {
+                var panel = PanelBrands.valueOf(data);
+                var doc = documentRepository.findOne(userData.getDocId());
+                doc.setPanel(panel);
+                documentRepository.save(doc);
+
+                if (PanelBrands.OTHER.equals(panel)) {
+                    sendText(chatId, "doc.tool.type.panel.other");
+                    chatStates.put(chatId, UserData.of(UserState.TOOL_TYPE_PANEL_OTHER, doc.getId()));
+                } else {
+                    sendTextWithKeyboard(chatId, "doc.tool.type.inverter", KeyboardFactory.getKeyboardByEnumValues(InverterBrands.values()));
+                    chatStates.put(chatId, UserData.of(UserState.TOOL_TYPE_INVERTER, doc.getId()));
+                }
+            }
+
+            case TOOL_TYPE_INVERTER -> {
+                var inverter = InverterBrands.valueOf(data);
+                var doc = documentRepository.findOne(userData.getDocId());
+                doc.setInverter(inverter);
+                documentRepository.save(doc);
+
+                if (InverterBrands.OTHER.equals(inverter)) {
+                    sendText(chatId, "doc.tool.type.inverter.other");
+                    chatStates.put(chatId, UserData.of(UserState.TOOL_TYPE_INVERTER_OTHER, doc.getId()));
+                } else {
+                    sendText(chatId, "doc.visit.date");
+                    chatStates.put(chatId, UserData.of(UserState.VISIT_DATE, doc.getId()));
+                }
+            }
+
+            case PAYMENT_FORM -> {
+                var doc = documentRepository.findOne(userData.getDocId());
+                doc.setPaymentForm(PaymentForm.valueOf(data));
+                documentRepository.save(doc);
+                sendText(chatId, "doc.visit.date");
+                chatStates.put(chatId, UserData.of(UserState.VISIT_DATE, doc.getId()));
+            }
+
         }
 
     }
 
+    private UserData getUserData(Long chatId) {
+        if (chatStates.containsKey(chatId)) {
+            return chatStates.get(chatId);
+        } else {
+            var data = UserData.defaultState();
+            chatStates.put(chatId, data);
+            return data;
+        }
+    }
+
+    private void sendFile(Long chatId, Document doc) {
+        var file = fileService.getFileByDocument(doc);
+        var fileName = MessageUtil.getMessage(doc.getDocumentType().getTitleKeyword()).concat(".pdf");
+        var sendDocument = TgMethodUtil.document(chatId, file, fileName);
+        try {
+            bot.execute(sendDocument);
+        } catch (TelegramApiException e) {
+            sendTextWithKeyboard(chatId, "error", KeyboardFactory.getMenuKeyboard());
+            chatStates.put(chatId, UserData.of(UserState.MENU));
+        }
+    }
+
     private void sendBuildingTypeOrSesPowerRequest(Long chatId, Document doc) {
         if (doc.getDocumentType().equals(DocumentType.SOLAR_PANEL)) {
-            sendTextWithKeyboard(chatId, "doc.building.type", KeyboardFactory.getBuildingTypeKeyboard());
+            sendTextWithKeyboard(chatId, "doc.building.type", KeyboardFactory.getKeyboardByEnumValues(BuildingType.values()));
             chatStates.put(chatId, UserData.of(UserState.BUILDING_TYPE, doc.getId()));
         } else {
             sendText(chatId, "doc.ses.power");
@@ -329,12 +419,12 @@ public class ResponseHandler {
     }
 
     private void sendText(Long chatId, String text) {
-        var message = SendMessageUtil.textMessage(chatId, text);
+        var message = TgMethodUtil.textMessage(chatId, text);
         sender.execute(message);
     }
 
     private void sendTextWithKeyboard(Long chatId, String text, ReplyKeyboard keyboard) {
-        var message = SendMessageUtil.textMessageWithKeyboard(chatId, text, keyboard);
+        var message = TgMethodUtil.textMessageWithKeyboard(chatId, text, keyboard);
         sender.execute(message);
     }
 

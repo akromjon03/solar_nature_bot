@@ -1,16 +1,13 @@
 package uz.solarnature.solarnaturebot.utils;
 
-import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
-import uz.solarnature.solarnaturebot.domain.enumeration.DocumentType;
 import uz.solarnature.solarnaturebot.domain.enumeration.UserLanguage;
-import uz.solarnature.solarnaturebot.domain.enumeration.types.BuildingType;
-import uz.solarnature.solarnaturebot.domain.enumeration.types.StationType;
+import uz.solarnature.solarnaturebot.domain.enumeration.types.GeneralType;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,6 +46,7 @@ public class KeyboardFactory {
         row.add(button);
         return ReplyKeyboardMarkup.builder()
                 .keyboardRow(row)
+                .isPersistent(false)
                 .resizeKeyboard(true)
                 .oneTimeKeyboard(true)
                 .build();
@@ -58,32 +56,21 @@ public class KeyboardFactory {
         var create = new KeyboardButton(MessageUtil.getMessage("menu.create"));
         var about = new KeyboardButton(MessageUtil.getMessage("menu.about"));
         var feedback = new KeyboardButton(MessageUtil.getMessage("menu.feedback"));
+        var lang = new KeyboardButton(MessageUtil.getMessage("menu.lang"));
 
         var keyboard = List.of(
                 new KeyboardRow(List.of(create)),
                 new KeyboardRow(List.of(about)),
-                new KeyboardRow(List.of(feedback))
+                new KeyboardRow(List.of(feedback)),
+                new KeyboardRow(List.of(lang))
         );
 
 
         return ReplyKeyboardMarkup.builder()
                 .keyboard(keyboard)
                 .oneTimeKeyboard(true)
+                .isPersistent(false)
                 .resizeKeyboard(true)
-                .build();
-    }
-
-    public static ReplyKeyboard getDocTypeKeyboard() {
-        var keyboard = new ArrayList<List<InlineKeyboardButton>>();
-
-        for (DocumentType type: DocumentType.values()) {
-            keyboard.add(List.of(
-                    button(MessageUtil.getMessage(type.getTitleKeyword()), type.name())
-            ));
-        }
-
-        return InlineKeyboardMarkup.builder()
-                .keyboard(keyboard)
                 .build();
     }
 
@@ -101,14 +88,15 @@ public class KeyboardFactory {
         return ReplyKeyboardMarkup.builder()
                 .keyboardRow(new KeyboardRow(List.of(no)))
                 .resizeKeyboard(true)
+                .isPersistent(false)
                 .oneTimeKeyboard(true)
                 .build();
     }
 
-    public static ReplyKeyboard getStationTypeKeyboard() {
+    public static ReplyKeyboard getKeyboardByEnumValues(GeneralType[] enums) {
         var keyboard = new ArrayList<List<InlineKeyboardButton>>();
 
-        for (StationType type: StationType.values()) {
+        for (GeneralType type: enums) {
             keyboard.add(List.of(
                     button(MessageUtil.getMessage(type.getTitleKeyword()), type.name())
             ));
@@ -119,17 +107,19 @@ public class KeyboardFactory {
                 .build();
     }
 
-    public static ReplyKeyboard getBuildingTypeKeyboard() {
-        var keyboard = new ArrayList<List<InlineKeyboardButton>>();
+    public static ReplyKeyboard getAddressKeyboard() {
+        var button = KeyboardButton.builder()
+                .text(MessageUtil.getMessage("doc.address.button"))
+                .requestLocation(true)
+                .build();
 
-        for (BuildingType type: BuildingType.values()) {
-            keyboard.add(List.of(
-                    button(MessageUtil.getMessage(type.getTitleKeyword()), type.name())
-            ));
-        }
-
-        return InlineKeyboardMarkup.builder()
-                .keyboard(keyboard)
+        return ReplyKeyboardMarkup
+                .builder()
+                .resizeKeyboard(true)
+                .oneTimeKeyboard(true)
+                .isPersistent(false)
+                .keyboardRow(new KeyboardRow(List.of(button)))
                 .build();
     }
+
 }

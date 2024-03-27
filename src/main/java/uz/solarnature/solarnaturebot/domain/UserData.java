@@ -28,6 +28,12 @@ public class UserData implements Serializable {
         return data;
     }
 
+    public static UserData defaultState() {
+        var data = new UserData();
+        data.setState(UserState.NOT_STARTED);
+        return data;
+    }
+
 
 
 }

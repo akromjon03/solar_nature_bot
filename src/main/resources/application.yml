@@ -18,4 +18,9 @@ application:
     token: 7076705214:AAGac1F_UM7wbCDiFZ9x89Lfk44ES_ivY08
     username: solar_nature_questionaire_bot
   file-storage:
-    root-path: /Users/vcuv/PROJECTS/filestorage/solar_nature_bot
+    checklists-folder: /Users/vcuv/Downloads/checklists
+  osm:
+    url: https://nominatim.openstreetmap.org/reverse?format={format}&lat={lat}&lon={lon}
+
+server:
+  port: 8080

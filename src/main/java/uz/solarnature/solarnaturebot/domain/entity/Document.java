@@ -5,12 +5,9 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import uz.solarnature.solarnaturebot.domain.enumeration.DocumentType;
-import uz.solarnature.solarnaturebot.domain.enumeration.types.BuildingType;
-import uz.solarnature.solarnaturebot.domain.enumeration.types.StationType;
+import uz.solarnature.solarnaturebot.domain.enumeration.types.*;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Setter
 @Getter
@@ -46,11 +43,19 @@ public class Document {
     private String buildingTypeOther;
 
     private String plan;
-    private String paymentForm;
 
+    @Enumerated(EnumType.STRING)
+    private PaymentForm paymentForm;
     private String sesPower;
-    private String panel;
-    private String inverter;
+
+    @Enumerated(EnumType.STRING)
+    private PanelBrands panel;
+    private String panelOther;
+
+    @Enumerated(EnumType.STRING)
+    private InverterBrands inverter;
+    private String inverterOther;
+
     private String negotiationPlan;
 
     @Enumerated(EnumType.STRING)
@@ -61,5 +66,8 @@ public class Document {
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
+
+    @Enumerated(EnumType.STRING)
+    private FillingType fillingType;
 
 }
