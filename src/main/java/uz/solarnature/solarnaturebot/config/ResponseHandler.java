@@ -47,7 +47,11 @@ public class ResponseHandler {
 
     public ResponseHandler(QuestionaireBot questionaireBot,
                            UserRepository userRepository,
-                           UserService userService, DocumentRepository documentRepository, FeedbackRepository feedbackRepository) {
+                           UserService userService,
+                           DocumentRepository documentRepository,
+                           AddressUtil addressUtil,
+                           FileService fileService,
+                           FeedbackRepository feedbackRepository) {
         this.sender = questionaireBot.silent();
         this.chatStates = questionaireBot.db().getMap(Constants.CHAT_STATES);
         this.userRepository = userRepository;
@@ -56,6 +60,7 @@ public class ResponseHandler {
         this.addressUtil = addressUtil;
         this.fileService = fileService;
         this.feedbackRepository = feedbackRepository;
+        this.bot = questionaireBot;
     }
 
     public void replyToMessage(Message message) {
@@ -68,7 +73,6 @@ public class ResponseHandler {
 
             switch (text) {
                 case "/start" -> {
-
                     sendTextWithKeyboard(chatId, "choose.language", KeyboardFactory.getLanguageKeyboard());
                     chatStates.put(chatId, UserData.of(UserState.CHOOSE_LANGUAGE));
                 }
@@ -90,7 +94,7 @@ public class ResponseHandler {
                     }
 
                     if (text.equals(MessageUtil.getMessage("menu.about"))) {
-                        sendText(chatId, "about.text");
+                        sendTextWithKeyboard(chatId, "about.text", KeyboardFactory.getMenuKeyboard());
                     }
 
                     if (text.equals(MessageUtil.getMessage("menu.feedback"))) {
@@ -110,7 +114,9 @@ public class ResponseHandler {
                     feedback.setUser(user);
                     feedback.setText(text);
                     feedbackRepository.save(feedback);
-                    sendText(chatId, "feedback.response");
+                    sendTextWithKeyboard(chatId, "feedback.response", KeyboardFactory.getMenuKeyboard());
+                    chatStates.put(chatId, UserData.of(UserState.MENU));
+                }
 
                 case NAME -> {
                     var doc = documentRepository.findOne(userData.getDocId());
@@ -173,8 +179,8 @@ public class ResponseHandler {
                         }
 
                         case WIND -> {
-                            sendText(chatId, "doc.visit.date");
-                            chatStates.put(chatId, UserData.of(UserState.VISIT_DATE, doc.getId()));
+                            sendTextWithKeyboard(chatId, "doc.payment.form", KeyboardFactory.getKeyboardByEnumValues(PaymentForm.values()));
+                            chatStates.put(chatId, UserData.of(UserState.PAYMENT_FORM, doc.getId()));
                         }
                     }
 
@@ -225,8 +231,8 @@ public class ResponseHandler {
                     var doc = documentRepository.findOne(userData.getDocId());
                     doc.setInverterOther(text);
                     documentRepository.save(doc);
-                    sendText(chatId, "doc.visit.date");
-                    chatStates.put(chatId, UserData.of(UserState.VISIT_DATE, doc.getId()));
+                    sendTextWithKeyboard(chatId, "doc.payment.form", KeyboardFactory.getKeyboardByEnumValues(PaymentForm.values()));
+                    chatStates.put(chatId, UserData.of(UserState.PAYMENT_FORM, doc.getId()));
                 }
 
                 case VISIT_DATE -> {
@@ -382,8 +388,8 @@ public class ResponseHandler {
                     sendText(chatId, "doc.tool.type.inverter.other");
                     chatStates.put(chatId, UserData.of(UserState.TOOL_TYPE_INVERTER_OTHER, doc.getId()));
                 } else {
-                    sendText(chatId, "doc.visit.date");
-                    chatStates.put(chatId, UserData.of(UserState.VISIT_DATE, doc.getId()));
+                    sendTextWithKeyboard(chatId, "doc.payment.form", KeyboardFactory.getKeyboardByEnumValues(PaymentForm.values()));
+                    chatStates.put(chatId, UserData.of(UserState.PAYMENT_FORM, doc.getId()));
                 }
             }
 
